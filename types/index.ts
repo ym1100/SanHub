@@ -175,6 +175,13 @@ export type ChannelType =
   | 'flow2api'
   | 'grok2api';
 
+// Video channel types (for /admin/video-channels)
+export type VideoChannelType =
+  | 'sora'
+  | 'openai-compatible'
+  | 'flow2api'
+  | 'grok2api';
+
 // 模型功能特性
 export interface ImageModelFeatures {
   textToImage: boolean;      // 文生图
@@ -266,7 +273,7 @@ export interface VideoModelFeatures {
 export interface VideoChannel {
   id: string;
   name: string;
-  type: ChannelType;
+  type: VideoChannelType;
   baseUrl: string;
   apiKey: string;
   enabled: boolean;
@@ -318,7 +325,7 @@ export interface VideoModel {
 export interface SafeVideoChannel {
   id: string;
   name: string;
-  type: ChannelType;
+  type: VideoChannelType;
   enabled: boolean;
 }
 
@@ -326,7 +333,7 @@ export interface SafeVideoChannel {
 export interface SafeVideoModel {
   id: string;
   channelId: string;
-  channelType: ChannelType;
+  channelType: VideoChannelType;
   apiModel?: string;
   name: string;
   description: string;

@@ -2252,7 +2252,15 @@ export async function deleteWorkspace(userId: string, id: string): Promise<boole
 // 图像渠道操作
 // ========================================
 
-import type { ImageChannel, ImageModel, SafeImageChannel, SafeImageModel, ChannelType, ImageModelFeatures } from '@/types';
+import type {
+  ImageChannel,
+  ImageModel,
+  SafeImageChannel,
+  SafeImageModel,
+  ChannelType,
+  ImageModelFeatures,
+  VideoChannelType,
+} from '@/types';
 
 // 创建图像渠道表（在 initializeDatabase 中调用）
 const CREATE_IMAGE_CHANNELS_SQL = `
@@ -2856,7 +2864,7 @@ export async function getVideoChannels(enabledOnly = false): Promise<VideoChanne
   return (rows as any[]).map((row) => ({
     id: row.id,
     name: row.name,
-    type: row.type as ChannelType,
+    type: row.type as VideoChannelType,
     baseUrl: row.base_url || '',
     apiKey: row.api_key || '',
     enabled: Boolean(row.enabled),
@@ -2879,7 +2887,7 @@ export async function getVideoChannel(id: string): Promise<VideoChannel | null> 
   return {
     id: row.id,
     name: row.name,
-    type: row.type as ChannelType,
+    type: row.type as VideoChannelType,
     baseUrl: row.base_url || '',
     apiKey: row.api_key || '',
     enabled: Boolean(row.enabled),

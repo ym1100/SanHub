@@ -223,6 +223,15 @@ sanhub/
 
 > 💡 首次使用可点击「从旧配置迁移」按钮自动创建默认渠道和模型
 
+### 视频渠道 Type 对照（`/admin/video-channels`）
+
+- `sora`：OpenAI Sora 风格接口
+- `openai-compatible`：标准 OpenAI Chat Completions 适配
+- `flow2api`：按 Flow2API 的 `POST /v1/chat/completions` 请求方式（`model + messages`，支持 `image_url` 多模态）
+- `grok2api`：Grok 视频接口（同样走 Chat Completions，并支持 `video_config`）
+
+> 说明：`Flow2API` / `flow2apiw` 在管理接口中会被统一归一化为 `flow2api`。
+
 ## 🖼️ 图床配置
 
 生成的图片和角色卡头像支持上传到 PicUI 图床，减少数据库体积。

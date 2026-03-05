@@ -19,6 +19,7 @@ export const dynamic = 'force-dynamic';
 
 const MAX_REFERENCE_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGE_COUNT = 10;
+const OPENAI_CHAT_VIDEO_CHANNEL_TYPES = new Set(['sora', 'openai-compatible', 'flow2api']);
 
 type MediaType = 'image' | 'video';
 
@@ -203,7 +204,7 @@ async function resolveVideoChatConfig(channelId?: string): Promise<{ apiKey: str
     const channel = await getVideoChannel(channelId);
     if (
       channel &&
-      (channel.type === 'sora' || channel.type === 'openai-compatible') &&
+      OPENAI_CHAT_VIDEO_CHANNEL_TYPES.has(channel.type) &&
       channel.apiKey &&
       channel.baseUrl
     ) {
@@ -214,7 +215,7 @@ async function resolveVideoChatConfig(channelId?: string): Promise<{ apiKey: str
   const channels = await getVideoChannels(true);
   const candidates = channels.filter(
     (channel) =>
-      (channel.type === 'sora' || channel.type === 'openai-compatible') &&
+      OPENAI_CHAT_VIDEO_CHANNEL_TYPES.has(channel.type) &&
       channel.apiKey &&
       channel.baseUrl
   );

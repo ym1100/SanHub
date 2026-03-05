@@ -7,8 +7,36 @@ import {
   updateVideoChannel,
   deleteVideoChannel,
 } from '@/lib/db';
+import type { VideoChannelType } from '@/types';
 
 export const dynamic = 'force-dynamic';
+
+const VIDEO_CHANNEL_TYPES: VideoChannelType[] = [
+  'sora',
+  'openai-compatible',
+  'flow2api',
+  'grok2api',
+];
+
+const VIDEO_CHANNEL_TYPE_ALIASES: Record<string, VideoChannelType> = {
+  sora: 'sora',
+  'openai-compatible': 'openai-compatible',
+  openai_compatible: 'openai-compatible',
+  openai: 'openai-compatible',
+  flow2api: 'flow2api',
+  flow2apiw: 'flow2api',
+  grok2api: 'grok2api',
+};
+
+function normalizeVideoChannelType(input: unknown): VideoChannelType | null {
+  if (typeof input !== 'string') return null;
+  const normalized = input.trim().toLowerCase();
+  return VIDEO_CHANNEL_TYPE_ALIASES[normalized] || null;
+}
+
+function buildTypeErrorMessage(): string {
+  return `无效的渠道类型，支持: ${VIDEO_CHANNEL_TYPES.join(', ')}`;
+}
 
 export async function GET() {
   try {
@@ -37,14 +65,18 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { name, type, baseUrl, apiKey, enabled } = body;
+    const normalizedType = normalizeVideoChannelType(type);
 
     if (!name || !type) {
       return NextResponse.json({ error: '名称和类型必填' }, { status: 400 });
     }
+    if (!normalizedType) {
+      return NextResponse.json({ error: buildTypeErrorMessage() }, { status: 400 });
+    }
 
     const channel = await createVideoChannel({
       name,
-      type,
+      type: normalizedType,
       baseUrl: baseUrl || '',
       apiKey: apiKey || '',
       enabled: enabled !== false,
@@ -74,7 +106,22 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: '缺少 ID' }, { status: 400 });
     }
 
-    const channel = await updateVideoChannel(id, updates);
+    const normalizedUpdates = { ...updates } as Partial<{
+      name: string;
+      type: VideoChannelType;
+      baseUrl: string;
+      apiKey: string;
+      enabled: boolean;
+    }>;
+    if (Object.prototype.hasOwnProperty.call(updates, 'type')) {
+      const normalizedType = normalizeVideoChannelType((updates as { type?: unknown }).type);
+      if (!normalizedType) {
+        return NextResponse.json({ error: buildTypeErrorMessage() }, { status: 400 });
+      }
+      normalizedUpdates.type = normalizedType;
+    }
+
+    const channel = await updateVideoChannel(id, normalizedUpdates);
     if (!channel) {
       return NextResponse.json({ error: '渠道不存在' }, { status: 404 });
     }

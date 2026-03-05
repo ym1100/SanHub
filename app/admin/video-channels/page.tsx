@@ -9,13 +9,13 @@ import { toast } from '@/components/ui/toaster';
 import type {
   VideoChannel,
   VideoModel,
-  ChannelType,
+  VideoChannelType,
   VideoModelFeatures,
   VideoDuration,
   VideoConfigObject,
 } from '@/types';
 
-const CHANNEL_TYPES: { value: ChannelType; label: string }[] = [
+const CHANNEL_TYPES: { value: VideoChannelType; label: string }[] = [
   { value: 'sora', label: 'Sora API' },
   { value: 'openai-compatible', label: 'OpenAI 流式' },
   { value: 'flow2api', label: 'Flow2API' },
@@ -135,7 +135,7 @@ export default function VideoChannelsPage() {
   const [editingChannel, setEditingChannel] = useState<string | null>(null);
   const [channelForm, setChannelForm] = useState({
     name: '',
-    type: 'sora' as ChannelType,
+    type: 'sora' as VideoChannelType,
     baseUrl: '',
     apiKey: '',
     enabled: true,
@@ -568,7 +568,7 @@ export default function VideoChannelsPage() {
             <label className="text-sm text-foreground/70">类型 *</label>
             <select
               value={channelForm.type}
-              onChange={(e) => setChannelForm({ ...channelForm, type: e.target.value as ChannelType })}
+              onChange={(e) => setChannelForm({ ...channelForm, type: e.target.value as VideoChannelType })}
               className="w-full px-4 py-3 bg-card/60 border border-border/70 rounded-xl text-foreground focus:outline-none focus:border-border"
             >
               {CHANNEL_TYPES.map(t => (
