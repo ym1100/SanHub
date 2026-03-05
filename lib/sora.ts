@@ -218,11 +218,19 @@ function normalizeGrokVideoLengthSeconds(duration?: string, fallback = 10): numb
 }
 
 function mapFlowModel(modelName: string, aspectRatio: string, duration: string): string {
+  const normalizedModel = (modelName || '').trim();
+  const lowerModel = normalizedModel.toLowerCase();
+
+  // Keep explicit Flow2API model ids untouched (for one-click imported models).
+  if (lowerModel.startsWith('veo_')) {
+    return normalizedModel;
+  }
+
   const ratio = (aspectRatio || '').toLowerCase();
   const seconds = normalizeDurationSeconds(duration);
 
-  const isI2V = modelName.toLowerCase().includes('i2v') || modelName.toLowerCase().includes('image');
-  const isR2V = modelName.toLowerCase().includes('r2v') || modelName.toLowerCase().includes('reference');
+  const isI2V = lowerModel.includes('i2v') || lowerModel.includes('image');
+  const isR2V = lowerModel.includes('r2v') || lowerModel.includes('reference');
 
   if (isR2V) {
     return ratio === 'portrait' ? 'veo_3_0_r2v_fast_portrait' : 'veo_3_0_r2v_fast_landscape';

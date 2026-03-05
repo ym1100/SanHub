@@ -128,6 +128,7 @@ export default function VideoChannelsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [migrating, setMigrating] = useState(false);
+  const [importingChannelId, setImportingChannelId] = useState<string | null>(null);
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set());
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
 
@@ -377,6 +378,36 @@ export default function VideoChannelsPage() {
       loadData();
     } catch {
       toast({ title: '更新失败', variant: 'destructive' });
+    }
+  };
+
+  const importFlow2ApiModels = async (channel: VideoChannel) => {
+    if (channel.type !== 'flow2api') return;
+    if (!confirm('将从该渠道的 /v1/models 一键导入视频模型（自动跳过已存在模型），是否继续？')) return;
+    setImportingChannelId(channel.id);
+    try {
+      const res = await fetch('/api/admin/video-channels/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId: channel.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || '导入失败');
+      }
+      const summary = data?.data || {};
+      toast({
+        title: `导入完成：新增 ${summary.created || 0}，跳过 ${summary.skipped || 0}`,
+      });
+      await loadData();
+    } catch (err) {
+      toast({
+        title: '导入失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        variant: 'destructive',
+      });
+    } finally {
+      setImportingChannelId(null);
     }
   };
 
@@ -1079,6 +1110,20 @@ export default function VideoChannelsPage() {
                       >
                         {channel.enabled ? '启用' : '禁用'}
                       </button>
+                      {channel.type === 'flow2api' && (
+                        <button
+                          onClick={() => importFlow2ApiModels(channel)}
+                          disabled={importingChannelId === channel.id}
+                          title="一键导入 Flow2API 视频模型"
+                          className="p-2 text-foreground/40 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg disabled:opacity-50"
+                        >
+                          {importingChannelId === channel.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
                       <button onClick={() => startAddModel(channel.id)} className="p-2 text-foreground/40 hover:text-green-400 hover:bg-green-500/10 rounded-lg">
                         <Plus className="w-4 h-4" />
                       </button>
