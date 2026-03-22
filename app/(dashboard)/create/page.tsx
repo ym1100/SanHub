@@ -184,7 +184,7 @@ export default function CreatePage() {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto flex h-[calc(100vh-100px)] flex-col gap-4 pb-20 lg:pb-8">
+    <div className="max-w-7xl mx-auto flex h-[calc(100vh-100px)] flex-col gap-4">
       <div className="surface p-2 flex flex-wrap gap-2">
         {CREATE_TABS.map((tab) => {
           const isActive = mode === tab.id;
