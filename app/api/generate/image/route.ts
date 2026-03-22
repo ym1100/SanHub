@@ -14,7 +14,7 @@ import {
 } from '@/lib/db';
 import { saveMediaAsync } from '@/lib/media-storage';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { fetchExternalBuffer } from '@/lib/safe-fetch';
+import { fetchReferenceImage } from '@/lib/reference-image';
 import { assertPromptsAllowed, isPromptBlockedError } from '@/lib/prompt-blocklist';
 import type { ChannelType, Generation, GenerationType } from '@/types';
 
@@ -32,26 +32,6 @@ const IMAGE_TYPE_BY_CHANNEL: Record<ChannelType, GenerationType> = {
   flow2api: 'gemini-image',
   grok2api: 'gemini-image',
 };
-
-async function fetchImageAsBase64(
-  imageUrl: string,
-  origin: string
-): Promise<{ mimeType: string; data: string }> {
-  const { buffer, contentType } = await fetchExternalBuffer(imageUrl, {
-    origin,
-    allowRelative: true,
-    maxBytes: MAX_REFERENCE_IMAGE_BYTES,
-    timeoutMs: 10000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    },
-  });
-  if (!contentType.startsWith('image/')) {
-    throw new Error('Unsupported reference image content type');
-  }
-  const data = buffer.toString('base64');
-  return { mimeType: contentType, data: `data:${contentType};base64,${data}` };
-}
 
 // 后台处理任务
 async function processGenerationTask(
@@ -195,8 +175,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (referenceImageUrl) {
-      const ref = await fetchImageAsBase64(referenceImageUrl, origin);
-      imageList.push(ref);
+      const referenceImage = await fetchReferenceImage(referenceImageUrl, {
+        origin,
+        userId: session.user.id,
+        userRole: session.user.role,
+        maxBytes: MAX_REFERENCE_IMAGE_BYTES,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+      imageList.push({
+        mimeType: referenceImage.mimeType,
+        data: referenceImage.dataUrl,
+      });
     }
 
     if (referenceImages && Array.isArray(referenceImages)) {
@@ -207,8 +198,19 @@ export async function POST(request: NextRequest) {
             imageList.push({ mimeType: match[1], data: img });
           }
         } else {
-          const ref = await fetchImageAsBase64(img, origin);
-          imageList.push(ref);
+          const referenceImage = await fetchReferenceImage(img, {
+            origin,
+            userId: session.user.id,
+            userRole: session.user.role,
+            maxBytes: MAX_REFERENCE_IMAGE_BYTES,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+          });
+          imageList.push({
+            mimeType: referenceImage.mimeType,
+            data: referenceImage.dataUrl,
+          });
         }
       }
     }

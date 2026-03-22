@@ -6,7 +6,7 @@ import { generateWithSora } from '@/lib/sora';
 import { saveGeneration, updateUserBalance, getUserById, updateGeneration, getSystemConfig, refundGenerationBalance } from '@/lib/db';
 import type { Generation, SoraGenerateRequest } from '@/types';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { fetchExternalBuffer } from '@/lib/safe-fetch';
+import { fetchReferenceImage } from '@/lib/reference-image';
 import { processVideoPrompt } from '@/lib/prompt-processor';
 import { assertPromptsAllowed, isPromptBlockedError } from '@/lib/prompt-blocklist';
 
@@ -88,23 +88,6 @@ async function generateWithRateLimitRetry(
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
-}
-
-async function fetchImageAsBase64(imageUrl: string, origin: string): Promise<{ mimeType: string; data: string }> {
-  const { buffer, contentType } = await fetchExternalBuffer(imageUrl, {
-    origin,
-    allowRelative: true,
-    maxBytes: MAX_REFERENCE_IMAGE_BYTES,
-    timeoutMs: 10000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    },
-  });
-  if (!contentType.startsWith('image/')) {
-    throw new Error('Unsupported reference image content type');
-  }
-  const data = buffer.toString('base64');
-  return { mimeType: contentType, data };
 }
 
 // 后台处理任务
@@ -291,8 +274,19 @@ export async function POST(request: NextRequest) {
     };
 
     if (body.referenceImageUrl) {
-      const file = await fetchImageAsBase64(body.referenceImageUrl, origin);
-      normalizedBody.files?.push(file);
+      const referenceImage = await fetchReferenceImage(body.referenceImageUrl, {
+        origin,
+        userId: session.user.id,
+        userRole: session.user.role,
+        maxBytes: MAX_REFERENCE_IMAGE_BYTES,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+      normalizedBody.files?.push({
+        mimeType: referenceImage.mimeType,
+        data: referenceImage.base64,
+      });
     }
 
     // 获取最新用户信息

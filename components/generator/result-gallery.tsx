@@ -16,7 +16,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { Generation } from '@/types';
-import { formatDate, truncate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { downloadAsset } from '@/lib/download';
 import { toast } from '@/components/ui/toaster';
 
@@ -114,6 +114,15 @@ export function ResultGallery({
       setSelected(null);
     }
   }, [generations, selected]);
+
+  useEffect(() => {
+    if (!selected) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelected(null);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selected]);
 
   return (
     <>
@@ -291,7 +300,7 @@ export function ResultGallery({
                     </div>
                   </div>
                   <div
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center gap-1">
@@ -326,25 +335,6 @@ export function ResultGallery({
                   </div>
                   <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-background/80 via-background/30 to-transparent">
                     <p className="text-xs text-foreground/80 truncate">{gen.prompt || '无提示词'}</p>
-                    {canReuse(gen) && (
-                      <div
-                        className="mt-2 flex flex-wrap gap-1.5 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          onClick={() => void onReuseGeneration?.(gen, 'image')}
-                          className="px-2.5 py-1 rounded-md bg-card/80 border border-border/70 text-[10px] text-foreground/80 hover:bg-card/90 transition-colors"
-                        >
-                          用于图片创作
-                        </button>
-                        <button
-                          onClick={() => void onReuseGeneration?.(gen, 'video')}
-                          className="px-2.5 py-1 rounded-md bg-card/80 border border-border/70 text-[10px] text-foreground/80 hover:bg-card/90 transition-colors"
-                        >
-                          用于视频创作
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
@@ -356,117 +346,72 @@ export function ResultGallery({
       {/* Lightbox */}
       {selected && (
         <div
-          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-8"
+          className="fixed inset-0 z-50 bg-background/95 p-3 backdrop-blur-xl md:p-6"
           onClick={() => setSelected(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="generation-lightbox-title"
         >
-          <div className="w-full h-full flex flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
-            <div className="w-full max-w-[90vw] max-h-[70vh] md:max-h-[75vh] flex items-center justify-center">
-              {isVideo(selected) ? (
-                <video
-                  src={selected.resultUrl}
-                  className="max-w-full max-h-[70vh] md:max-h-[75vh] w-auto h-auto rounded-xl border border-border/70"
-                  controls
-                  autoPlay
-                  loop
-                />
-              ) : (
-                <img
-                  src={selected.resultUrl}
-                  alt={selected.prompt}
-                  className="max-w-full max-h-[70vh] md:max-h-[75vh] w-auto h-auto rounded-xl border border-border/70 object-contain"
-                />
-              )}
-            </div>
-
-            <div className="w-full max-w-3xl mt-4 md:mt-6 px-2">
-              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-foreground text-sm leading-relaxed truncate md:whitespace-normal">{truncate(selected.prompt || '无提示词', 150)}</p>
-                  <p className="text-foreground/40 text-xs mt-2">
+          <div
+            className="mx-auto flex h-full max-h-[calc(100vh-1.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-2xl md:max-h-[calc(100vh-3rem)] md:flex-row"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="flex items-start justify-between gap-3 border-b border-border/70 px-4 py-3 md:px-5">
+                <div className="min-w-0">
+                  <h2
+                    id="generation-lightbox-title"
+                    className="truncate text-sm font-medium text-foreground md:text-base"
+                  >
+                    {selected.prompt || '无提示词'}
+                  </h2>
+                  <p className="mt-1 text-xs text-foreground/40">
                     {formatDate(selected.createdAt)} · 消耗 {selected.cost} 积分
                   </p>
-                  <div className="mt-3 space-y-2">
-                    <div className="flex items-start gap-2">
-                      <span className="text-foreground/40 text-xs shrink-0 w-14">URL</span>
-                      <span className="text-foreground/70 text-xs break-all flex-1">{selected.resultUrl || '-'}</span>
-                      {selected.resultUrl && (
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(selected.resultUrl);
-                            toast({ title: '已复制 URL' });
-                          }}
-                          className="shrink-0 p-1.5 text-foreground/40 hover:text-foreground hover:bg-card/70 rounded-lg transition-colors"
-                          title="复制 URL"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-
-                    {typeof selected.params?.permalink === 'string' && selected.params.permalink && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-foreground/40 text-xs shrink-0 w-14">详情</span>
-                        <a
-                          href={selected.params.permalink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-foreground/70 text-xs break-all flex-1 hover:text-foreground underline underline-offset-2"
-                        >
-                          {selected.params.permalink}
-                        </a>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(selected.params.permalink as string);
-                            toast({ title: '已复制 Permalink' });
-                          }}
-                          className="shrink-0 p-1.5 text-foreground/40 hover:text-foreground hover:bg-card/70 rounded-lg transition-colors"
-                          title="复制 Permalink"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </button>
-                        <a
-                          href={selected.params.permalink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="shrink-0 p-1.5 text-foreground/40 hover:text-foreground hover:bg-card/70 rounded-lg transition-colors"
-                          title="打开链接"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </div>
-                    )}
-
-                    {typeof selected.params?.revised_prompt === 'string' && selected.params.revised_prompt && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-foreground/40 text-xs shrink-0 w-14">改写</span>
-                        <span className="text-foreground/70 text-xs break-words flex-1">{selected.params.revised_prompt}</span>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(selected.params.revised_prompt as string);
-                            toast({ title: '已复制改写提示词' });
-                          }}
-                          className="shrink-0 p-1.5 text-foreground/40 hover:text-foreground hover:bg-card/70 rounded-lg transition-colors"
-                          title="复制改写提示词"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2 shrink-0 w-full md:w-auto">
+                <button
+                  onClick={() => setSelected(null)}
+                  className="shrink-0 rounded-xl border border-border/70 bg-card/70 p-2 text-foreground/60 transition-colors hover:bg-card/90 hover:text-foreground"
+                  title="关闭"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="flex flex-1 min-h-0 items-center justify-center bg-background/40 p-3 md:p-6">
+                {isVideo(selected) ? (
+                  <video
+                    src={selected.resultUrl}
+                    className="max-h-full max-w-full rounded-xl border border-border/70 object-contain"
+                    controls
+                    autoPlay
+                    loop
+                  />
+                ) : (
+                  <img
+                    src={selected.resultUrl}
+                    alt={selected.prompt}
+                    className="max-h-full max-w-full rounded-xl border border-border/70 object-contain"
+                  />
+                )}
+              </div>
+            </div>
+
+            <aside className="flex w-full shrink-0 flex-col border-t border-border/70 md:max-w-[380px] md:border-l md:border-t-0">
+              <div className="flex-1 min-h-0 space-y-4 overflow-y-auto p-4 md:p-5">
+                <div className="flex flex-wrap gap-2">
                   {canReuse(selected) && (
                     <>
                       <button
                         onClick={() => void onReuseGeneration?.(selected, 'image')}
-                        className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-card/60 text-foreground border border-border/70 rounded-xl hover:bg-card/80 transition-colors text-sm font-medium"
+                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/70 bg-card/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-card/80"
                       >
                         <ImageIcon className="w-4 h-4" />
                         图片创作
                       </button>
                       <button
                         onClick={() => void onReuseGeneration?.(selected, 'video')}
-                        className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-card/60 text-foreground border border-border/70 rounded-xl hover:bg-card/80 transition-colors text-sm font-medium"
+                        className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/70 bg-card/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-card/80"
                       >
                         <Play className="w-4 h-4" />
                         视频创作
@@ -475,7 +420,7 @@ export function ResultGallery({
                   )}
                   <button
                     onClick={() => downloadFile(selected.resultUrl, selected.id, selected.type)}
-                    className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-foreground text-background rounded-xl hover:opacity-90 transition-colors text-sm font-medium"
+                    className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:opacity-90"
                   >
                     <Download className="w-4 h-4" />
                     下载
@@ -484,7 +429,7 @@ export function ResultGallery({
                     <button
                       onClick={() => handleRemoveGeneration(selected)}
                       disabled={busyGenerationId === selected.id}
-                      className="flex-1 md:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-red-500/10 text-red-300 border border-red-500/30 rounded-xl hover:bg-red-500/20 transition-colors text-sm font-medium disabled:cursor-not-allowed disabled:opacity-70"
+                      className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       {busyGenerationId === selected.id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -494,16 +439,111 @@ export function ResultGallery({
                       删除
                     </button>
                   )}
-                  <button
-                    onClick={() => setSelected(null)}
-                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-card/60 text-foreground border border-border/70 rounded-xl hover:bg-card/80 transition-colors text-sm font-medium"
-                  >
-                    <X className="w-4 h-4" />
-                    关闭
-                  </button>
                 </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-foreground/40">
+                    提示词
+                  </p>
+                  <div className="rounded-xl border border-border/70 bg-card/40 p-3">
+                    <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap break-words">
+                      {selected.prompt || '无提示词'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-foreground/40">
+                    资源地址
+                  </p>
+                  <div className="rounded-xl border border-border/70 bg-card/40 p-3">
+                    <div className="flex items-start gap-2">
+                      <p className="min-w-0 flex-1 break-all text-xs leading-5 text-foreground/70">
+                        {selected.resultUrl || '-'}
+                      </p>
+                      {selected.resultUrl && (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selected.resultUrl);
+                            toast({ title: '已复制 URL' });
+                          }}
+                          className="shrink-0 rounded-lg p-1.5 text-foreground/40 transition-colors hover:bg-card/70 hover:text-foreground"
+                          title="复制 URL"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {typeof selected.params?.permalink === 'string' && selected.params.permalink && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-foreground/40">
+                      详情链接
+                    </p>
+                    <div className="rounded-xl border border-border/70 bg-card/40 p-3">
+                      <div className="flex items-start gap-2">
+                        <a
+                          href={selected.params.permalink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="min-w-0 flex-1 break-all text-xs leading-5 text-foreground/70 underline underline-offset-2 transition-colors hover:text-foreground"
+                        >
+                          {selected.params.permalink}
+                        </a>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(selected.params.permalink as string);
+                              toast({ title: '已复制 Permalink' });
+                            }}
+                            className="rounded-lg p-1.5 text-foreground/40 transition-colors hover:bg-card/70 hover:text-foreground"
+                            title="复制 Permalink"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          <a
+                            href={selected.params.permalink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg p-1.5 text-foreground/40 transition-colors hover:bg-card/70 hover:text-foreground"
+                            title="打开链接"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {typeof selected.params?.revised_prompt === 'string' && selected.params.revised_prompt && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-foreground/40">
+                      改写提示词
+                    </p>
+                    <div className="rounded-xl border border-border/70 bg-card/40 p-3">
+                      <div className="flex items-start gap-2">
+                        <p className="min-w-0 flex-1 break-words text-xs leading-5 text-foreground/70">
+                          {selected.params.revised_prompt}
+                        </p>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selected.params.revised_prompt as string);
+                            toast({ title: '已复制改写提示词' });
+                          }}
+                          className="shrink-0 rounded-lg p-1.5 text-foreground/40 transition-colors hover:bg-card/70 hover:text-foreground"
+                          title="复制改写提示词"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            </aside>
           </div>
         </div>
       )}

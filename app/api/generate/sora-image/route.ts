@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { generateImage } from '@/lib/sora-api';
 import { saveGeneration, updateUserBalance, getUserById, updateGeneration, getSystemConfig, refundGenerationBalance } from '@/lib/db';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { fetchExternalBuffer } from '@/lib/safe-fetch';
+import { fetchReferenceImage } from '@/lib/reference-image';
 import type { Generation } from '@/types';
 import { assertPromptsAllowed, isPromptBlockedError } from '@/lib/prompt-blocklist';
 
@@ -20,26 +20,6 @@ interface SoraImageRequest {
   size?: string;
   input_image?: string;
   referenceImageUrl?: string;
-}
-
-async function fetchImageAsBase64(
-  imageUrl: string,
-  origin: string
-): Promise<{ mimeType: string; data: string }> {
-  const { buffer, contentType } = await fetchExternalBuffer(imageUrl, {
-    origin,
-    allowRelative: true,
-    maxBytes: MAX_REFERENCE_IMAGE_BYTES,
-    timeoutMs: 10000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    },
-  });
-  if (!contentType.startsWith('image/')) {
-    throw new Error('Unsupported reference image content type');
-  }
-  const data = buffer.toString('base64');
-  return { mimeType: contentType, data };
 }
 
 // 后台处理任务
@@ -141,8 +121,16 @@ export async function POST(request: NextRequest) {
     const normalizedBody: SoraImageRequest = { ...body };
 
     if (body.referenceImageUrl && !body.input_image) {
-      const file = await fetchImageAsBase64(body.referenceImageUrl, origin);
-      normalizedBody.input_image = file.data;
+      const referenceImage = await fetchReferenceImage(body.referenceImageUrl, {
+        origin,
+        userId: session.user.id,
+        userRole: session.user.role,
+        maxBytes: MAX_REFERENCE_IMAGE_BYTES,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+      normalizedBody.input_image = referenceImage.base64;
     }
 
     if (!normalizedBody.prompt) {
