@@ -88,7 +88,7 @@ function buildMySqlError(error: any): Error {
     rawMessage.includes('AUTH_SWITCH_PLUGIN_ERROR')
   ) {
     return new Error(
-      'MySQL 认证失败。对于 MySQL 8.x，建议使用 caching_sha2_password，并在无 SSL 场景下开启 MYSQL_ALLOW_PUBLIC_KEY_RETRIEVAL=true。'
+      'MySQL 认证失败。对于 MySQL 8.x，请确认账号使用 caching_sha2_password，并检查驱动与服务端认证配置是否一致。'
     );
   }
 
@@ -130,11 +130,6 @@ export class MySQLAdapter implements DatabaseAdapter {
       supportBigNumbers: true,
       bigNumberStrings: false,
       dateStrings: false,
-      allowPublicKeyRetrieval:
-        parseBooleanEnv(
-          process.env.MYSQL_ALLOW_PUBLIC_KEY_RETRIEVAL ||
-            process.env.DB_ALLOW_PUBLIC_KEY_RETRIEVAL
-        ) !== false,
       charset: process.env.MYSQL_CHARSET || 'utf8mb4',
       timezone: process.env.MYSQL_TIMEZONE || 'Z',
       // Connection timeout settings

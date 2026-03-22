@@ -59,8 +59,6 @@ export async function POST(request: NextRequest) {
     // 调用 Sora 后台 /get-sora-link 接口
     const backendUrl = `${soraBackendUrl.replace(/\/$/, '')}/get-sora-link`;
     
-    console.log('[Sora Unwatermark] Request:', { backendUrl, permalink, hasToken: !!soraBackendToken });
-    
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',
       headers: {
@@ -72,18 +70,30 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    const backendData = await backendResponse.json();
-    
-    // 调试日志：查看后端返回的完整数据
-    console.log('[Sora Unwatermark] Backend response:', JSON.stringify(backendData, null, 2));
+    const backendData = await backendResponse.json().catch(() => null);
 
     if (!backendResponse.ok) {
       return NextResponse.json(
         { 
           success: false, 
-          error: backendData.error || '获取无水印链接失败' 
+          error:
+            backendData && typeof backendData.error === 'string'
+              ? backendData.error
+              : '获取无水印链接失败' 
         },
         { status: backendResponse.status }
+      );
+    }
+
+    const downloadLink =
+      backendData && typeof backendData.download_link === 'string'
+        ? backendData.download_link
+        : null;
+
+    if (!downloadLink) {
+      return NextResponse.json(
+        { success: false, error: 'Sora 后台未返回可用的下载链接' },
+        { status: 502 }
       );
     }
 
@@ -91,7 +101,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        download_link: backendData.download_link,
+        download_link: downloadLink,
       },
     });
 

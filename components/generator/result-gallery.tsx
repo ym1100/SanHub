@@ -83,9 +83,12 @@ export function ResultGallery({
   const isTaskVideo = (task: Task) => task.type?.includes('video') || task.model?.includes('video');
   const handleRemoveGeneration = (generation: Generation) => {
     if (!onRemoveGeneration) return;
-    const confirmed = window.confirm('确定删除这个作品吗？删除后将无法恢复。');
-    if (!confirmed) return;
     void onRemoveGeneration(generation);
+  };
+  const handleReuseGeneration = (generation: Generation, target: 'image' | 'video') => {
+    if (!onReuseGeneration) return;
+    setSelected(null);
+    void onReuseGeneration(generation, target);
   };
 
   // 过滤出正在进行的任务（不包括已完成的，已完成的会在 generations 中显示）
@@ -231,7 +234,7 @@ export function ResultGallery({
                           {task.errorMessage}
                         </p>
                         <p className="text-[10px] text-red-300/50 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          Click to view details
+                          点击查看详情
                         </p>
                       </>
                     )}
@@ -403,14 +406,14 @@ export function ResultGallery({
                   {canReuse(selected) && (
                     <>
                       <button
-                        onClick={() => void onReuseGeneration?.(selected, 'image')}
+                        onClick={() => handleReuseGeneration(selected, 'image')}
                         className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/70 bg-card/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-card/80"
                       >
                         <ImageIcon className="w-4 h-4" />
                         图片创作
                       </button>
                       <button
-                        onClick={() => void onReuseGeneration?.(selected, 'video')}
+                        onClick={() => handleReuseGeneration(selected, 'video')}
                         className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/70 bg-card/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-card/80"
                       >
                         <Play className="w-4 h-4" />
@@ -566,7 +569,7 @@ export function ResultGallery({
               </div>
               <div>
                 <h2 id="error-modal-title" className="text-lg font-medium text-foreground">
-                  {selectedFailedTask.status === 'cancelled' ? 'Task cancelled' : 'Generation failed'}
+                  {selectedFailedTask.status === 'cancelled' ? '任务已取消' : '生成失败'}
                 </h2>
                 <p className="text-xs text-foreground/40">
                   {formatDate(selectedFailedTask.createdAt)}
@@ -576,7 +579,7 @@ export function ResultGallery({
 
             <div className="space-y-3">
               <div>
-                <p className="text-xs text-foreground/50 mb-1">Error</p>
+                <p className="text-xs text-foreground/50 mb-1">错误详情</p>
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                   <p className="text-sm text-red-300 whitespace-pre-wrap break-words">
                     {selectedFailedTask.errorMessage}
@@ -586,7 +589,7 @@ export function ResultGallery({
 
               {selectedFailedTask.prompt && (
                 <div>
-                  <p className="text-xs text-foreground/50 mb-1">Prompt</p>
+                  <p className="text-xs text-foreground/50 mb-1">提示词</p>
                   <p className="text-sm text-foreground/70 break-words">
                     {selectedFailedTask.prompt}
                   </p>
@@ -595,7 +598,7 @@ export function ResultGallery({
 
               {selectedFailedTask.model && (
                 <div>
-                  <p className="text-xs text-foreground/50 mb-1">Model</p>
+                  <p className="text-xs text-foreground/50 mb-1">模型</p>
                   <p className="text-sm text-foreground/70">{selectedFailedTask.model}</p>
                 </div>
               )}
@@ -606,7 +609,7 @@ export function ResultGallery({
               className="mt-6 w-full py-2.5 bg-card/60 border border-border/70 text-foreground rounded-xl hover:bg-card/80 transition-colors text-sm font-medium"
               autoFocus
             >
-              Close
+              关闭
             </button>
           </div>
         </div>
