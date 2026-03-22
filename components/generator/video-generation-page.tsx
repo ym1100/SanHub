@@ -79,6 +79,7 @@ export function VideoGenerationView({
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const filesRef = useRef<Array<{ file: File; preview: string }>>([]);
   const refreshGenerationFeedRef = useRef<() => Promise<void>>(async () => {});
+  const isActiveRef = useRef(isActive);
   const [localExternalReference, setLocalExternalReference] =
     useState<ReusableImageReference | null>(null);
 
@@ -159,6 +160,10 @@ export function VideoGenerationView({
     filesRef.current = files;
   }, [files]);
 
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
   // 获取当前选中的模型配置
   const currentModel = useMemo(() => {
     return availableModels.find(m => m.id === selectedModelId) || availableModels[0];
@@ -168,6 +173,10 @@ export function VideoGenerationView({
 
   // 加载模型列表
   useEffect(() => {
+    if (!isActive || modelsLoaded) {
+      return;
+    }
+
     const loadModels = async () => {
       try {
         const res = await fetch('/api/video-models');
@@ -191,11 +200,15 @@ export function VideoGenerationView({
         setModelsLoaded(true);
       }
     };
-    loadModels();
-  }, []);
+    void loadModels();
+  }, [isActive, modelsLoaded]);
 
   // 加载每日使用量
   useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+
     const loadDailyUsage = async () => {
       try {
         const res = await fetch('/api/user/daily-usage');
@@ -208,11 +221,15 @@ export function VideoGenerationView({
         console.error('Failed to load daily usage:', err);
       }
     };
-    loadDailyUsage();
-  }, []);
+    void loadDailyUsage();
+  }, [isActive]);
 
   // 当模型改变时，重置参数到默认值
   useEffect(() => {
+    if (!isActiveRef.current) {
+      return;
+    }
+
     const model = availableModels.find(m => m.id === selectedModelId);
     if (model) {
       setAspectRatio(model.defaultAspectRatio);
@@ -228,6 +245,10 @@ export function VideoGenerationView({
 
   // 加载用户角色卡
   useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+
     const loadCharacterCards = async () => {
       try {
         const res = await fetch('/api/user/character-cards');
@@ -242,8 +263,8 @@ export function VideoGenerationView({
         console.error('Failed to load character cards:', err);
       }
     };
-    loadCharacterCards();
-  }, []);
+    void loadCharacterCards();
+  }, [isActive]);
 
   useEffect(() => {
     if (!isSoraChannel) {
@@ -867,8 +888,8 @@ export function VideoGenerationView({
   return (
     <div
       className={cn(
-        'flex flex-col max-w-7xl mx-auto',
-        embedded ? 'min-h-0' : 'lg:h-[calc(100vh-100px)]'
+        'flex w-full flex-col',
+        embedded ? 'h-full min-h-0' : 'max-w-7xl mx-auto lg:h-[calc(100vh-100px)]'
       )}
     >
       {!embedded && (
@@ -924,7 +945,8 @@ export function VideoGenerationView({
       
       {/* 底部创作面板 */}
       <div className={cn(
-        "surface shrink-0 overflow-visible mb-4 lg:mb-0 lg:order-2",
+        "surface order-2 shrink-0 overflow-visible mt-4",
+        embedded && "min-h-[15rem]",
         (availableModels.length === 0 || isVideoLimitReached) && "opacity-50 pointer-events-none"
       )}>
         {/* Tab 切换创作模式 */}
@@ -1211,7 +1233,7 @@ export function VideoGenerationView({
       </div>
 
       {/* 结果区域 - 移动端在下面，桌面端在上面 */}
-      <div className="flex-1 min-h-0 lg:order-1 pb-20 lg:pb-4">
+      <div className="order-1 flex-1 min-h-0 overflow-hidden">
         <ResultGallery
           generations={generations}
           tasks={tasks}

@@ -52,8 +52,11 @@ export default function CreatePage() {
 
   const initialMode = normalizeMode(searchParams.get('mode'));
   const initialReferenceId = searchParams.get('referenceId');
-
-  const [mode, setMode] = useState<CreateMode>(initialMode);
+  const mode = initialMode;
+  const [mountedModes, setMountedModes] = useState<Record<CreateMode, boolean>>(() => ({
+    image: initialMode === 'image',
+    video: initialMode === 'video',
+  }));
   const [imageReference, setImageReference] = useState<ReusableImageReference | null>(() =>
     initialMode === 'image' ? buildReferenceFromQuery(initialReferenceId) : null
   );
@@ -65,13 +68,16 @@ export default function CreatePage() {
     mode === 'image' ? imageReference?.generationId ?? null : videoReference?.generationId ?? null;
 
   useEffect(() => {
+    setMountedModes((current) =>
+      current[mode] ? current : { ...current, [mode]: true }
+    );
+  }, [mode]);
+
+  useEffect(() => {
     const params = new URLSearchParams(searchParamsString);
-    const nextMode = normalizeMode(params.get('mode'));
     const nextReferenceId = params.get('referenceId');
 
-    setMode((current) => (current === nextMode ? current : nextMode));
-
-    if (nextMode === 'image') {
+    if (mode === 'image') {
       setImageReference((current) => {
         if (!nextReferenceId) {
           return current ? null : current;
@@ -93,32 +99,55 @@ export default function CreatePage() {
         ? current
         : buildReusableImageReferenceFromId(nextReferenceId);
     });
-  }, [searchParamsString]);
+  }, [mode, searchParamsString]);
+
+  const updateRoute = useCallback(
+    (nextMode: CreateMode, nextReferenceId: string | null) => {
+      const params = new URLSearchParams(searchParamsString);
+      params.set('mode', nextMode);
+
+      if (nextReferenceId) {
+        params.set('referenceId', nextReferenceId);
+      } else {
+        params.delete('referenceId');
+      }
+
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParamsString]
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(searchParamsString);
-    const currentMode = normalizeMode(params.get('mode'));
+    const currentMode = params.get('mode');
     const currentReferenceId = params.get('referenceId');
 
     if (currentMode === mode && (currentReferenceId ?? null) === activeReferenceId) {
       return;
     }
+    updateRoute(mode, activeReferenceId);
+  }, [activeReferenceId, mode, searchParamsString, updateRoute]);
 
-    params.set('mode', mode);
+  const handleTabChange = useCallback(
+    (nextMode: CreateMode) => {
+      if (nextMode === mode) {
+        return;
+      }
 
-    if (activeReferenceId) {
-      params.set('referenceId', activeReferenceId);
-    } else {
-      params.delete('referenceId');
-    }
+      setMountedModes((current) =>
+        current[nextMode] ? current : { ...current, [nextMode]: true }
+      );
 
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }, [activeReferenceId, mode, pathname, router, searchParamsString]);
+      const nextReferenceId =
+        nextMode === 'image'
+          ? imageReference?.generationId ?? null
+          : videoReference?.generationId ?? null;
 
-  const handleTabChange = useCallback((nextMode: CreateMode) => {
-    setMode(nextMode);
-  }, []);
+      updateRoute(nextMode, nextReferenceId);
+    },
+    [imageReference?.generationId, mode, updateRoute, videoReference?.generationId]
+  );
 
   const handleReuseGeneration = useCallback(
     (generation: Generation, target: 'image' | 'video') => {
@@ -129,14 +158,20 @@ export default function CreatePage() {
 
       if (target === 'image') {
         setImageReference(reusableReference);
-        setMode('image');
+        setMountedModes((current) =>
+          current.image ? current : { ...current, image: true }
+        );
+        updateRoute('image', reusableReference.generationId);
         return;
       }
 
       setVideoReference(reusableReference);
-      setMode('video');
+      setMountedModes((current) =>
+        current.video ? current : { ...current, video: true }
+      );
+      updateRoute('video', reusableReference.generationId);
     },
-    []
+    [updateRoute]
   );
 
   const clearReferenceForGeneration = useCallback((generationId: string) => {
@@ -149,7 +184,7 @@ export default function CreatePage() {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4">
+    <div className="max-w-7xl mx-auto flex h-[calc(100vh-100px)] flex-col gap-4 pb-20 lg:pb-8">
       <div className="surface p-2 flex flex-wrap gap-2">
         {CREATE_TABS.map((tab) => {
           const isActive = mode === tab.id;
@@ -185,24 +220,29 @@ export default function CreatePage() {
         })}
       </div>
 
-      <div className={cn(mode === 'image' ? 'block' : 'hidden')}>
-        <ImageGenerationPage
-          embedded
-          isActive={mode === 'image'}
-          externalReference={imageReference}
-          onClearExternalReference={() => setImageReference(null)}
-          onReuseGeneration={handleReuseGeneration}
-          onGenerationDeleted={clearReferenceForGeneration}
-        />
-      </div>
-
-      <div className={cn(mode === 'video' ? 'block' : 'hidden')}>
-        <VideoGenerationView
-          embedded
-          isActive={mode === 'video'}
-          externalReference={videoReference}
-          onExternalReferenceChange={setVideoReference}
-        />
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {mountedModes.image && (
+          <div className={cn('h-full min-h-0', mode === 'image' ? 'block' : 'hidden')}>
+            <ImageGenerationPage
+              embedded
+              isActive={mode === 'image'}
+              externalReference={imageReference}
+              onClearExternalReference={() => setImageReference(null)}
+              onReuseGeneration={handleReuseGeneration}
+              onGenerationDeleted={clearReferenceForGeneration}
+            />
+          </div>
+        )}
+        {mountedModes.video && (
+          <div className={cn('h-full min-h-0', mode === 'video' ? 'block' : 'hidden')}>
+            <VideoGenerationView
+              embedded
+              isActive={mode === 'video'}
+              externalReference={videoReference}
+              onExternalReferenceChange={setVideoReference}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

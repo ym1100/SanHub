@@ -96,6 +96,7 @@ export function ImageGenerationPage({
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const refreshGenerationFeedRef = useRef<() => Promise<void>>(async () => {});
   const imagesRef = useRef<Array<{ file: File; preview: string }>>([]);
+  const isActiveRef = useRef(isActive);
 
   const [availableModels, setAvailableModels] = useState<SafeImageModel[]>([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -142,6 +143,10 @@ export function ImageGenerationPage({
   }, [images]);
 
   useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
+  useEffect(() => {
     return () => {
       imagesRef.current.forEach((img) => URL.revokeObjectURL(img.preview));
       imagesRef.current = [];
@@ -149,6 +154,10 @@ export function ImageGenerationPage({
   }, []);
 
   useEffect(() => {
+    if (!isActive || modelsLoaded) {
+      return;
+    }
+
     const loadModels = async () => {
       try {
         const res = await fetch('/api/image-models');
@@ -176,9 +185,13 @@ export function ImageGenerationPage({
     };
 
     void loadModels();
-  }, []);
+  }, [isActive, modelsLoaded]);
 
   useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+
     const loadDailyUsage = async () => {
       try {
         const res = await fetch('/api/user/daily-usage');
@@ -193,9 +206,13 @@ export function ImageGenerationPage({
     };
 
     void loadDailyUsage();
-  }, []);
+  }, [isActive]);
 
   useEffect(() => {
+    if (!isActiveRef.current) {
+      return;
+    }
+
     const model = availableModels.find((item) => item.id === selectedModelId);
     if (!model) return;
 
@@ -633,8 +650,8 @@ export function ImageGenerationPage({
   return (
     <div
       className={cn(
-        'flex flex-col max-w-7xl mx-auto',
-        embedded ? 'min-h-0' : 'lg:h-[calc(100vh-100px)]'
+        'flex w-full flex-col',
+        embedded ? 'h-full min-h-0' : 'max-w-7xl mx-auto lg:h-[calc(100vh-100px)]'
       )}
     >
       {!embedded && (
@@ -691,7 +708,8 @@ export function ImageGenerationPage({
 
       <div
         className={cn(
-          'surface shrink-0 overflow-visible mb-4 lg:mb-0 lg:order-2',
+          'surface order-2 shrink-0 overflow-visible mt-4',
+          embedded && 'min-h-[15rem]',
           (availableModels.length === 0 || isImageLimitReached) && 'opacity-50 pointer-events-none'
         )}
       >
@@ -890,7 +908,7 @@ export function ImageGenerationPage({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 lg:order-1 pb-20 lg:pb-4">
+      <div className="order-1 flex-1 min-h-0 overflow-hidden">
         <ResultGallery
           generations={generations}
           tasks={tasks}
