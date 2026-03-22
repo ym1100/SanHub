@@ -310,6 +310,26 @@ export default function SiteConfigPage() {
 
         <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card/50 p-4">
           <div>
+            <p className="text-sm text-foreground">抽卡模式</p>
+            <p className="mt-1 text-xs text-foreground/30">关闭后图片与视频创作页不再显示连抽入口。</p>
+          </div>
+          <Switch
+            checked={config.featureFlags.gachaEnabled}
+            onClick={() =>
+              patch((prev) => ({
+                ...prev,
+                featureFlags: {
+                  ...prev.featureFlags,
+                  gachaEnabled: !prev.featureFlags.gachaEnabled,
+                },
+              }))
+            }
+            color="bg-amber-500"
+          />
+        </div>
+
+        <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card/50 p-4">
+          <div>
             <p className="text-sm text-foreground">启用邀请码</p>
             <p className="mt-1 text-xs text-foreground/30">关闭后用户页不再显示邀请码入口。</p>
           </div>

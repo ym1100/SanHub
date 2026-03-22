@@ -361,6 +361,7 @@ export interface SiteConfig {
 
 export interface FeatureFlagsConfig {
   squareEnabled: boolean;
+  gachaEnabled: boolean;
 }
 
 export interface InviteSettingsConfig {

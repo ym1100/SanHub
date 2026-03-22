@@ -12,7 +12,6 @@ import {
   Wand2,
   Film,
   Dices,
-  Info,
   User,
   X,
   Plus,
@@ -21,7 +20,9 @@ import { cn } from '@/lib/utils';
 import { compressImageToWebP, fileToBase64 } from '@/lib/image-compression';
 import { toast } from '@/components/ui/toaster';
 import { CustomSelect } from '@/components/ui/select-custom';
+import { InlineToggle } from '@/components/generator/inline-toggle';
 import type { Task } from '@/components/generator/result-gallery';
+import { useSiteConfig } from '@/components/providers/site-config-provider';
 import type { Generation, CharacterCard, SafeVideoModel, DailyLimitConfig } from '@/types';
 import {
   deleteGenerationRecord,
@@ -77,6 +78,7 @@ export function VideoGenerationView({
   isActive = true,
 }: VideoGenerationPageProps = {}) {
   const { update } = useSession();
+  const siteConfig = useSiteConfig();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const filesRef = useRef<Array<{ file: File; preview: string }>>([]);
@@ -958,20 +960,20 @@ export function VideoGenerationView({
               {createModeSwitcher}
             </div>
           )}
-          <div className="flex min-w-0 overflow-x-auto">
+          <div className="grid min-w-0 flex-1 grid-cols-2 gap-1 sm:grid-cols-3">
             {CREATION_MODES.map((mode) => (
               <button
                 key={mode.id}
                 onClick={() => setCreationMode(mode.id as CreationMode)}
                 className={cn(
-                  'flex shrink-0 items-center gap-2 px-4 py-1.5 text-sm font-medium transition-all border-b-2 -mb-[1px]',
+                  'flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all border-b-2 -mb-[1px]',
                   creationMode === mode.id
                     ? 'border-sky-500 text-foreground'
                     : 'border-transparent text-foreground/50 hover:text-foreground/70'
                 )}
               >
                 <mode.icon className="w-4 h-4" />
-                <span>{mode.label}</span>
+                <span className="truncate whitespace-nowrap">{mode.label}</span>
               </button>
             ))}
           </div>
@@ -1160,15 +1162,11 @@ export function VideoGenerationView({
             )}
 
             {/* 保留提示词 */}
-            <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-foreground/50">
-              <input
-                type="checkbox"
-                checked={keepPrompt}
-                onChange={(e) => setKeepPrompt(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-border/70 bg-card/60 accent-sky-400 cursor-pointer"
-              />
-              <span>保留</span>
-            </label>
+            <InlineToggle
+              checked={keepPrompt}
+              onCheckedChange={setKeepPrompt}
+              label="保留输入"
+            />
 
             {/* 中文警告提示（暂时禁用）*/}
             {/* {hasChinese && (
@@ -1189,30 +1187,22 @@ export function VideoGenerationView({
             <div className="flex-1" />
 
             {/* 抽卡按钮 */}
-            <div className="relative group">
+            {siteConfig.gachaEnabled && (
               <button
                 onClick={handleGachaMode}
                 disabled={submitting || compressing || hasChinese}
                 className={cn(
-                  'w-9 h-9 flex items-center justify-center rounded-lg transition-all',
+                  'inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-xs font-medium transition-all',
                   submitting || compressing || hasChinese
-                    ? 'bg-card/60 text-foreground/40 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90'
+                    ? 'cursor-not-allowed border-border/70 bg-card/50 text-foreground/40'
+                    : 'border-amber-500/30 bg-amber-500/12 text-amber-200 hover:bg-amber-500/18'
                 )}
-                title="抽卡模式"
+                title="一次性提交 3 个相同参数的视频任务"
               >
                 <Dices className="w-4 h-4" />
+                <span>抽卡 x3</span>
               </button>
-              <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-20">
-                <div className="bg-card/90 border border-border/70 rounded-lg px-3 py-2 text-xs text-foreground/80 whitespace-nowrap shadow-lg">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Info className="w-3 h-3 text-amber-300" />
-                    <span className="font-medium text-foreground">抽卡模式</span>
-                  </div>
-                  <p>一次性提交 3 个相同参数的任务</p>
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* 生成按钮 */}
             <button

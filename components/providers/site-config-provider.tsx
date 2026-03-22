@@ -7,6 +7,7 @@ import type { SiteConfig } from '@/types';
 export interface ExtendedSiteConfig extends SiteConfig {
   defaultBalance: number;
   squareEnabled: boolean;
+  gachaEnabled: boolean;
   inviteEnabled: boolean;
   inviteRewardEnabled: boolean;
   inviteeBonusPoints: number;
@@ -23,6 +24,7 @@ const defaultSiteConfig: ExtendedSiteConfig = {
   poweredBy: 'Powered by OpenAI Sora & Google Gemini',
   defaultBalance: 100,
   squareEnabled: true,
+  gachaEnabled: true,
   inviteEnabled: true,
   inviteRewardEnabled: true,
   inviteeBonusPoints: 100,
@@ -66,6 +68,7 @@ export function SiteConfigProvider({ children, initialConfig }: SiteConfigProvid
           ...data.data,
           defaultBalance: data.data.defaultBalance ?? 100,
           squareEnabled: data.data.squareEnabled ?? true,
+          gachaEnabled: data.data.gachaEnabled ?? true,
           inviteEnabled: data.data.inviteEnabled ?? true,
           inviteRewardEnabled: data.data.inviteRewardEnabled ?? true,
           inviteeBonusPoints: data.data.inviteeBonusPoints ?? 100,

@@ -170,6 +170,10 @@ export async function POST(request: NextRequest) {
           typeof featureFlags.squareEnabled === 'boolean'
             ? featureFlags.squareEnabled
             : current.featureFlags.squareEnabled,
+        gachaEnabled:
+          typeof featureFlags.gachaEnabled === 'boolean'
+            ? featureFlags.gachaEnabled
+            : current.featureFlags.gachaEnabled,
       };
     }
 

@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Sparkles,
   Dices,
-  Info,
   X,
   Image as ImageIcon,
 } from 'lucide-react';
@@ -20,6 +19,8 @@ import { compressImageToWebP, fileToBase64 } from '@/lib/image-compression';
 import type { Generation, SafeImageModel, DailyLimitConfig } from '@/types';
 import { toast } from '@/components/ui/toaster';
 import type { Task } from '@/components/generator/result-gallery';
+import { InlineToggle } from '@/components/generator/inline-toggle';
+import { useSiteConfig } from '@/components/providers/site-config-provider';
 import { CustomSelect } from '@/components/ui/select-custom';
 import {
   deleteGenerationRecord,
@@ -94,6 +95,7 @@ export function ImageGenerationPage({
 }: ImageGenerationPageProps) {
   const router = useRouter();
   const { update } = useSession();
+  const siteConfig = useSiteConfig();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const refreshGenerationFeedRef = useRef<() => Promise<void>>(async () => {});
@@ -838,15 +840,11 @@ export function ImageGenerationPage({
               <span className="text-xs text-foreground/40">{getCurrentResolutionDisplay()}</span>
             )}
 
-            <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-foreground/50">
-              <input
-                type="checkbox"
-                checked={keepPrompt}
-                onChange={(e) => setKeepPrompt(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-border/70 bg-card/60 accent-sky-400 cursor-pointer"
-              />
-              <span>保留</span>
-            </label>
+            <InlineToggle
+              checked={keepPrompt}
+              onCheckedChange={setKeepPrompt}
+              label="保留输入"
+            />
 
             {error && (
               <div className="flex items-center gap-1.5 text-xs text-red-400">
@@ -857,34 +855,26 @@ export function ImageGenerationPage({
 
             <div className="flex-1" />
 
-            <div className="relative group">
+            {siteConfig.gachaEnabled && (
               <button
                 onClick={handleGachaMode}
                 disabled={submitting || compressing}
                 className={cn(
-                  'w-9 h-9 flex items-center justify-center rounded-lg transition-all',
+                  'inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-xs font-medium transition-all',
                   submitting || compressing
-                    ? 'bg-card/60 text-foreground/40 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90'
+                    ? 'cursor-not-allowed border-border/70 bg-card/50 text-foreground/40'
+                    : 'border-amber-500/30 bg-amber-500/12 text-amber-200 hover:bg-amber-500/18'
                 )}
-                title="抽卡模式"
+                title="一次性提交 3 个相同参数的任务"
               >
                 {compressing || submitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Dices className="w-4 h-4" />
                 )}
+                <span>抽卡 x3</span>
               </button>
-              <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-20">
-                <div className="bg-card/90 border border-border/70 rounded-lg px-3 py-2 text-xs text-foreground/80 whitespace-nowrap shadow-lg">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Info className="w-3 h-3 text-amber-300" />
-                    <span className="font-medium text-foreground">抽卡模式</span>
-                  </div>
-                  <p>一次性提交 3 个相同参数的任务</p>
-                </div>
-              </div>
-            </div>
+            )}
 
             <button
               onClick={handleGenerate}
